@@ -1,44 +1,94 @@
 import { defaults } from './options';
 
-export default class {
+export default class Core {
+    addElements() {}
+    resize() {}
+    startScroll() {}
+    stopScroll() {}
+
+    /**
+     * @param {object} options - see `scripts/options#defaults` for custom params
+     */
     constructor(options = {}) {
-        Object.assign(this, defaults, options);
-        this.smartphone = defaults.smartphone;
-        if (options.smartphone) Object.assign(this.smartphone, options.smartphone);
-        this.tablet = defaults.tablet;
-        if (options.tablet) Object.assign(this.tablet, options.tablet);
+        this.applyOptions(options);
+        this.setupInitClass();
+        this.setupLocalState();
+        this.setupInstanceState();
+        this.setupEventListeners();
+    }
 
-        this.namespace = 'locomotive';
-        this.html = document.documentElement;
-        this.windowHeight = window.innerHeight;
-        this.windowWidth = window.innerWidth;
-        this.windowMiddle = {
-            x: this.windowWidth / 2,
-            y: this.windowHeight / 2
-        };
-        this.els = {};
-        this.currentElements = {};
-        this.listeners = {};
+    /**
+     * Sets local instance attibutes from `options` or `defaults`
+     * @param {object} options 
+     */
+    applyOptions(options = {}) {
+        Object.assign(this, defaults, this.getSupportedOptions(options));
+    }
 
-        this.hasScrollTicking = false;
-        this.hasCallEventSet = false;
+    /**
+     * Filters to supported options
+     * @param {object} options
+     * @returns {object} supported options
+     */
+    getSupportedOptions(options = {}) {
+        let supportedOptions = {}
+        for(let key in options) {
+            if(Object.keys(defaults).includes(key)) {
+                supportedOptions[key] = options[key];
+            }
+        }
+        return supportedOptions;
+    }
 
-        this.checkScroll = this.checkScroll.bind(this);
-        this.checkResize = this.checkResize.bind(this);
-        this.checkEvent = this.checkEvent.bind(this);
+    /**
+     * Append scroll init class to html
+     * @param {string} initClass 
+     */
+    setupInitClass(initClass = 'has-scroll-init') {
+        this.initClass = initClass
+        document.documentElement.classList.add(initClass);
+    }
+    /**
+     * Remove scroll init class from html
+     */
+    removeInitClass() {
+        this.initClass && document.documentElement.classList.remove(this.initClass);
+    }
 
+    /**
+     * Initialize more defaults?
+     * Should these live on `defaults`?
+     */
+    setupLocalState() {
+         // what to `els` represent exactly?
+         this.els = {};
+         this.currentElements = {};
+         this.listeners = {};
+ 
+         // state property
+         this.hasScrollTicking = false;
+         this.hasCallEventSet = false;
+    }
+
+    /**
+     * Sets up instance state
+     * Instance of what?
+     * Should this be its own class?
+     */
+    setupInstanceState() {
         this.instance = {
             scroll: {
                 x: 0,
                 y: 0
             },
             limit: {
-                x: this.html.offsetWidth,
-                y: this.html.offsetHeight
+                x: document.documentElement.offsetWidth,
+                y: document.documentElement.offsetHeight
             },
-            currentElements: this.currentElements
+            currentElements: {}
         };
 
+        // additional setup for mobile checks
         if (this.isMobile) {
             if (this.isTablet) {
                 this.context = 'tablet';
@@ -63,21 +113,25 @@ export default class {
         if (this.getDirection) {
             this.instance.speed = 0;
         }
+    }
 
-        this.html.classList.add(this.initClass);
-
+    setupEventListeners() {
         window.addEventListener('resize', this.checkResize, false);
     }
 
+    removeEventListeners() {
+        window.removeEventListener('resize', this.checkResize, false);
+    }
+
+    // TODO_JFD investigate how this is being used
+    // seems overcomplicated
     init() {
         this.initEvents();
     }
 
-    checkScroll() {
-        this.dispatchScroll();
-    }
+    checkScroll = () => this.dispatchScroll();
 
-    checkResize() {
+    checkResize = () => {
         if (!this.resizeTick) {
             this.resizeTick = true;
             requestAnimationFrame(() => {
@@ -87,34 +141,22 @@ export default class {
         }
     }
 
-    resize() {}
+    checkEvent = (event) => {
+        const name = event.type.replace('locomotive', '');
+        const list = this.listeners[name];
 
-    checkContext() {
-        if (!this.reloadOnContextChange) return;
+        if (!list || list.length === 0) return;
 
-        this.isMobile =
-            /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
-            (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1) ||
-            this.windowWidth < this.tablet.breakpoint;
-        this.isTablet = this.isMobile && this.windowWidth >= this.tablet.breakpoint;
-
-        let oldContext = this.context;
-        if (this.isMobile) {
-            if (this.isTablet) {
-                this.context = 'tablet';
-            } else {
-                this.context = 'smartphone';
+        list.forEach((func) => {
+            switch (name) {
+                case 'scroll':
+                    return func(this.instance);
+                case 'call':
+                    return func(this.callValue, this.callWay, this.callObj);
+                default:
+                    return func();
             }
-        } else {
-            this.context = 'desktop';
-        }
-
-        if (oldContext != this.context) {
-            let oldSmooth = oldContext == 'desktop' ? this.smooth : this[oldContext].smooth;
-            let newSmooth = this.context == 'desktop' ? this.smooth : this[this.context].smooth;
-
-            if (oldSmooth != newSmooth) window.location.reload();
-        }
+        });
     }
 
     initEvents() {
@@ -138,14 +180,12 @@ export default class {
         );
     }
 
-    addElements() {}
-
     detectElements(hasCallEventSet) {
         const scrollTop = this.instance.scroll.y;
-        const scrollBottom = scrollTop + this.windowHeight;
+        const scrollBottom = scrollTop + window.innerHeight;
 
         const scrollLeft = this.instance.scroll.x;
-        const scrollRight = scrollLeft + this.windowWidth;
+        const scrollRight = scrollLeft + window.innerWidth;
 
         Object.entries(this.els).forEach(([i, el]) => {
             if (el && (!el.inView || hasCallEventSet)) {
@@ -164,8 +204,8 @@ export default class {
                 if (this.direction === 'horizontal') {
                     let width = el.right - el.left;
                     el.progress =
-                        (this.instance.scroll.x - (el.left - this.windowWidth)) /
-                        (width + this.windowWidth);
+                        (this.instance.scroll.x - (el.left - window.innerWidth)) /
+                        (width + window.innerWidth);
 
                     if (scrollRight < el.left || scrollLeft > el.right) {
                         this.setOutOfView(el, i);
@@ -173,8 +213,8 @@ export default class {
                 } else {
                     let height = el.bottom - el.top;
                     el.progress =
-                        (this.instance.scroll.y - (el.top - this.windowHeight)) /
-                        (height + this.windowHeight);
+                        (this.instance.scroll.y - (el.top - window.innerHeight)) /
+                        (height + window.innerHeight);
 
                     if (scrollBottom < el.top || scrollTop > el.bottom) {
                         this.setOutOfView(el, i);
@@ -182,10 +222,6 @@ export default class {
                 }
             }
         });
-
-        // this.els = this.els.filter((current, i) => {
-        //     return current !== null;
-        // });
 
         this.hasScrollTicking = false;
     }
@@ -203,18 +239,10 @@ export default class {
                 this.els[i].call = false;
             }
         }
-
-        // if (!current.repeat && !current.speed && !current.sticky) {
-        //     if (!current.call || current.call && this.hasCallEventSet) {
-        //        this.els[i] = null
-        //     }
-        // }
     }
 
     setOutOfView(current, i) {
-        // if (current.repeat || current.speed !== undefined) {
         this.els[i].inView = false;
-        // }
 
         Object.keys(this.currentElements).forEach((el) => {
             el === i && delete this.currentElements[el];
@@ -236,12 +264,12 @@ export default class {
 
         if (this.callValue.length == 1) this.callValue = this.callValue[0];
 
-        const callEvent = new Event(this.namespace + 'call');
+        const callEvent = new Event('locomotivecall');
         this.el.dispatchEvent(callEvent);
     }
 
     dispatchScroll() {
-        const scrollEvent = new Event(this.namespace + 'scroll');
+        const scrollEvent = new Event('locomotivescroll');
         this.el.dispatchEvent(scrollEvent);
     }
 
@@ -254,7 +282,7 @@ export default class {
         list.push(func);
 
         if (list.length === 1) {
-            this.el.addEventListener(this.namespace + event, this.checkEvent, false);
+            this.el.addEventListener(`locomotive${event}`, this.checkEvent, false);
         }
 
         if (event === 'call') {
@@ -274,31 +302,9 @@ export default class {
         list.splice(index, 1);
 
         if (list.index === 0) {
-            this.el.removeEventListener(this.namespace + event, this.checkEvent, false);
+            this.el.removeEventListener(`locomotive${event}`, this.checkEvent, false);
         }
     }
-
-    checkEvent(event) {
-        const name = event.type.replace(this.namespace, '');
-        const list = this.listeners[name];
-
-        if (!list || list.length === 0) return;
-
-        list.forEach((func) => {
-            switch (name) {
-                case 'scroll':
-                    return func(this.instance);
-                case 'call':
-                    return func(this.callValue, this.callWay, this.callObj);
-                default:
-                    return func();
-            }
-        });
-    }
-
-    startScroll() {}
-
-    stopScroll() {}
 
     setScroll(x, y) {
         this.instance.scroll = {
@@ -308,10 +314,10 @@ export default class {
     }
 
     destroy() {
-        window.removeEventListener('resize', this.checkResize, false);
+        this.removeEventListeners();
 
         Object.keys(this.listeners).forEach((event) => {
-            this.el.removeEventListener(this.namespace + event, this.checkEvent, false);
+            this.el.removeEventListener(`locomotive${event}`, this.checkEvent, false);
         });
         this.listeners = {};
 
@@ -319,6 +325,6 @@ export default class {
             el.removeEventListener('click', this.setScrollTo, false);
         });
 
-        this.html.classList.remove(this.initClass);
+        this.removeInitClass();
     }
 }

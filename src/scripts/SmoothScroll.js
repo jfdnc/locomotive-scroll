@@ -297,6 +297,34 @@ export default class extends Core {
         this.update();
     }
 
+    checkContext() {
+        if (!this.reloadOnContextChange) return;
+
+        this.isMobile =
+            /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
+            (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1) ||
+            window.innerWidth < this.tablet.breakpoint;
+        this.isTablet = this.isMobile && window.innerWidth >= this.tablet.breakpoint;
+
+        let oldContext = this.context;
+        if (this.isMobile) {
+            if (this.isTablet) {
+                this.context = 'tablet';
+            } else {
+                this.context = 'smartphone';
+            }
+        } else {
+            this.context = 'desktop';
+        }
+
+        if (oldContext != this.context) {
+            let oldSmooth = oldContext == 'desktop' ? this.smooth : this[oldContext].smooth;
+            let newSmooth = this.context == 'desktop' ? this.smooth : this[this.context].smooth;
+
+            if (oldSmooth != newSmooth) window.location.reload();
+        }
+    }
+
     updateDelta(e) {
         let delta;
         const gestureDirection =
@@ -517,6 +545,8 @@ export default class extends Core {
         }
     }
 
+    // smooth and native vary slightly here
+    // abstract shared functionality into Core
     addElements() {
         this.els = {};
         this.parallaxElements = {};

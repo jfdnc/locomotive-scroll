@@ -1,18 +1,16 @@
 import { defaults } from './options';
-import NativeScroll from './Native';
-import SmoothScroll from './Smooth';
+import NativeScroll from './NativeScroll';
+import SmoothScroll from './SmoothScroll';
 
 export class Smooth {
-    constructor(options = {}) {
-        this.options = options;
+    constructor() {
+        super(...arguments);
+        this.logWarnings();
+        this.init();
+    }
 
-        // Override default options with given ones
-        Object.assign(this, defaults, options);
-        this.smartphone = defaults.smartphone;
-        if (options.smartphone) Object.assign(this.smartphone, options.smartphone);
-        this.tablet = defaults.tablet;
-        if (options.tablet) Object.assign(this.tablet, options.tablet);
-
+    logWarnings() {
+        //check on the state of these
         if (!this.smooth && this.direction == 'horizontal')
             console.warn('🚨 `smooth:false` & `horizontal` direction are not yet compatible');
         if (!this.tablet.smooth && this.tablet.direction == 'horizontal')
@@ -23,11 +21,10 @@ export class Smooth {
             console.warn(
                 '🚨 `smooth:false` & `horizontal` direction are not yet compatible (smartphone)'
             );
-
-        this.init();
     }
 
     init() {
+        // SmoothScroll#checkContext very similar
         this.options.isMobile =
             /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
             (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1) ||

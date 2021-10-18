@@ -1,7 +1,7 @@
 import Core from './Core';
 import smoothscroll from 'smoothscroll-polyfill';
 
-export default class extends Core {
+export default class NativeScroll extends Core {
     constructor(options = {}) {
         super(options);
 
@@ -82,12 +82,13 @@ export default class extends Core {
         }
     }
 
+    // smooth and native vary slightly here
+    // abstract shared functionality into Core
     addElements() {
         this.els = {};
-        const els = this.el.querySelectorAll('[data-' + this.name + ']');
+        const els = this.el.querySelectorAll(`[data-${this.name}]`);
 
         els.forEach((el, index) => {
-            const BCR = el.getBoundingClientRect();
             let cl = el.dataset[this.name + 'Class'] || this.class;
             let id =
                 typeof el.dataset[this.name + 'Id'] === 'string'

@@ -1,5 +1,5 @@
 import { defaults } from './options';
-import Scroll from './Native';
+import NativeScroll from './NativeScroll';
 
 export class Native {
     constructor(options = {}) {
@@ -16,7 +16,7 @@ export class Native {
     }
 
     init() {
-        this.scroll = new Scroll(this.options);
+        this.scroll = new NativeScroll(this.options);
 
         this.scroll.init();
 
