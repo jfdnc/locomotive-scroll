@@ -2,7 +2,7 @@ import virtualScroll from 'virtual-scroll';
 import Core from './Core';
 import { lerp } from './utils/maths';
 import { getTranslate } from './utils/transform';
-import { getParents, queryClosestParent } from './utils/html';
+import { getParentNodes } from './utils/html';
 import BezierEasing from 'bezier-easing';
 
 const keyCodes = {
@@ -526,7 +526,7 @@ export default class extends Core {
 
         els.forEach((el, index) => {
             // Try and find the target's parent section
-            const targetParents = getParents(el);
+            const targetParents = getParentNodes(el);
             let section = Object.entries(this.sections)
                 .map(([key, section]) => section)
                 .find((section) => targetParents.includes(section.el));
@@ -918,7 +918,7 @@ export default class extends Core {
         // We have a target that is not a coordinate yet, get it
         if (typeof target !== 'number') {
             // Verify the given target belongs to this scroll scope
-            let targetInScope = getParents(target).includes(this.el);
+            let targetInScope = getParentNodes(target).includes(this.el);
             if (!targetInScope) {
                 // If the target isn't inside our main element, abort any action
                 return;
@@ -930,7 +930,7 @@ export default class extends Core {
             const offsetLeft = targetBCR.left;
 
             // Try and find the target's parent section
-            const targetParents = getParents(target);
+            const targetParents = getParentNodes(target);
             const parentSection = targetParents.find((candidate) => {
                 return Object.entries(this.sections) // Get sections associative array as a regular array
                     .map(([key, section]) => section) // map to section only (we dont need the key here)
